@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Para mi princesa 👑👑</title>
+
+  <!-- FUENTE ELEGANTE -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500&display=swap" rel="stylesheet">
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* FRASE */
+    #frase {
+      position: fixed;
+      top: 10%;
+      width: 100%;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 32px;
+      font-family: 'Playfair Display', serif;
+      pointer-events: none;
+      z-index: 10;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+  </style>
+</head>
+
+<body>
+
+  <canvas id="c"></canvas>
+
+  <div id="frase">
+    Para ti, que haces mi mundo más bonito con esos ojitos hermosos 🌷✨
+  </div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById('c');
+      const ctx = canvas.getContext('2d');
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      function getScaleFactor() {
+        if (window.innerWidth < 600) return 0.5;
+        if (window.innerWidth < 1024) return 0.8;
+        return 1;
+      }
+
+      const petalColor = "#ffeb3b";
+      const stemColor = "#2e8b57";
+      const leafColor = "#3cb371";
+
+      const flowers = [];
+      const stars = [];
+      const shootingStars = [];
+
+      // ZONA PROTEGIDA (donde está el texto)
+      function isInTextZone(x, y) {
+        return (
+          y < canvas.height * 0.25 &&
+          x > canvas.width * 0.2 &&
+          x < canvas.width * 0.8
+        );
+      }
+
+      function createStars(n = 150) {
+        for (let i = 0; i < n; i++) {
+          stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            r: Math.random() * 1.5 + 0.5,
+            phase: Math.random() * Math.PI * 2,
+            speed: 0.5 + Math.random() * 1,
+            dx: 5 + Math.random() * 10
+          });
+        }
+      }
+      createStars(200);
+
+      function updateStars(dt) {
+        for (const s of stars) {
+          s.phase += s.speed * dt;
+          s.x += s.dx * dt * 0.05;
+          if (s.x > canvas.width + s.r) s.x = -s.r;
+        }
+      }
+
+      function drawStars() {
+        for (const s of stars) {
+          const alpha = 0.6 + 0.4 * Math.sin(s.phase);
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function spawnShootingStars() {
+        const count = 8;
+        for (let i = 0; i < count; i++) {
+          shootingStars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height * 0.5,
+            vx: -400 - Math.random() * 200,
+            vy: 200 + Math.random() * 200,
+            life: 1.5,
+          });
+        }
+        setTimeout(spawnShootingStars, 8000 + Math.random() * 7000);
+      }
+      setTimeout(spawnShootingStars, 5000);
+
+      function updateShootingStars(dt) {
+        for (let i = shootingStars.length - 1; i >= 0; i--) {
+          const s = shootingStars[i];
+          s.x += s.vx * dt;
+          s.y += s.vy * dt;
+          s.life -= dt;
+          if (s.life <= 0) {
+            shootingStars.splice(i, 1);
+          }
+        }
+      }
+
+      function drawShootingStars() {
+        for (const s of shootingStars) {
+          const grad = ctx.createLinearGradient(s.x, s.y, s.x - s.vx * 0.02, s.y - s.vy * 0.02);
+          grad.addColorStop(0, "white");
+          grad.addColorStop(1, "rgba(255,255,255,0)");
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(s.x, s.y);
+          ctx.lineTo(s.x - s.vx * 0.05, s.y - s.vy * 0.05);
+          ctx.stroke();
+        }
+      }
+
+      function createFlower(x, y, maxScale = null) {
+        if (isInTextZone(x, y)) return; // 🚫 evita flores sobre el texto
+
+        const scaleFactor = getScaleFactor();
+        const chosenScale = maxScale !== null ? maxScale : (0.3 + Math.random() * 0.7);
+        flowers.push({
+          x, y,
+          s: 0.1,
+          maxS: chosenScale * scaleFactor,
+          oscPhase: Math.random() * Math.PI * 2,
+          oscSpeed: 1 + Math.random() * 0.5,
+          oscAmp: 0.05 + Math.random() * 0.1
+        });
+      }
+
+      function drawFlower(f, t) {
+        ctx.save();
+        ctx.translate(f.x, f.y);
+
+        const sway = Math.sin(t * f.oscSpeed + f.oscPhase) * f.oscAmp;
+
+        const stemLength = 80 * f.s;
+        ctx.strokeStyle = stemColor;
+        ctx.lineWidth = 4 * f.s;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(
+          12 * sway * f.s, stemLength * 0.25,
+          -12 * sway * f.s, stemLength * 0.5,
+          0, stemLength * 0.5
+        );
+        ctx.bezierCurveTo(
+          12 * sway * f.s, stemLength * 0.75,
+          -12 * sway * f.s, stemLength,
+          0, stemLength
+        );
+        ctx.stroke();
+
+        ctx.fillStyle = leafColor;
+        ctx.beginPath();
+        ctx.ellipse(-10 * f.s, stemLength * 0.5, 6 * f.s, 14 * f.s, -0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(10 * f.s, stemLength * 0.7, 6 * f.s, 14 * f.s, 0.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.rotate(sway);
+
+        ctx.fillStyle = petalColor;
+
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(-18 * f.s, -20 * f.s, -6 * f.s, -35 * f.s);
+        ctx.quadraticCurveTo(-2 * f.s, -15 * f.s, 0, -10 * f.s);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(18 * f.s, -20 * f.s, 6 * f.s, -35 * f.s);
+        ctx.quadraticCurveTo(2 * f.s, -15 * f.s, 0, -10 * f.s);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(-6 * f.s, -10 * f.s);
+        ctx.quadraticCurveTo(0, -45 * f.s, 6 * f.s, -10 * f.s);
+        ctx.quadraticCurveTo(0, 0, -6 * f.s, -10 * f.s);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      function seedFlowers(n = 60) {
+        for (let i = 0; i < n; i++) {
+          createFlower(Math.random() * canvas.width, Math.random() * canvas.height);
+        }
+      }
+      seedFlowers(60);
+
+      let last = performance.now();
+      function loop(now) {
+        const dt = (now - last) / 1000;
+        last = now;
+        const t = now / 1000;
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, "#0a0a2a");
+        gradient.addColorStop(1, "#000");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        updateStars(dt);
+        drawStars();
+
+        updateShootingStars(dt);
+        drawShootingStars();
+
+        flowers.forEach(f => {
+          if (f.s < f.maxS) {
+            f.s += 0.01;
+          }
+          drawFlower(f, t);
+        });
+
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+
+      canvas.addEventListener("click", e => {
+        createFlower(e.clientX, e.clientY);
+      });
+    })();
+  </script>
+</body>
+
+</html>
